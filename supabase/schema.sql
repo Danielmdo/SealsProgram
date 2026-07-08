@@ -79,67 +79,66 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
 
--- === PROFILES POLICIES ===
+-- Funciones helper (SECURITY DEFINER evita recursión infinita)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin');
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- Todos pueden ver su propio perfil
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND super_admin = true);
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- PROFILES POLICIES
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
--- Admins y super_admins pueden ver todos los perfiles
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin());
 
--- Cada usuario puede actualizar su propio perfil (nombre, trainer_id)
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- Solo super_admin puede cambiar roles
 CREATE POLICY "Super admin can manage roles"
   ON profiles FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND super_admin = true))
-  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND super_admin = true));
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
 
--- Admins pueden ver sus usuarios asignados
-CREATE POLICY "Admins can view assigned users"
-  ON profiles FOR SELECT
-  USING (trainer_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
-
--- === ROUTINES POLICIES ===
-
+-- ROUTINES POLICIES
 CREATE POLICY "Anyone can view routines"
   ON routines FOR SELECT
   USING (true);
 
 CREATE POLICY "Admins can insert routines"
   ON routines FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  WITH CHECK (public.is_admin());
 
 CREATE POLICY "Admins can update routines"
   ON routines FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin());
 
 CREATE POLICY "Admins can delete routines"
   ON routines FOR DELETE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin());
 
--- === EXERCISES POLICIES ===
-
+-- EXERCISES POLICIES
 CREATE POLICY "Anyone can view exercises"
   ON exercises FOR SELECT
   USING (true);
 
 CREATE POLICY "Admins can insert exercises"
   ON exercises FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  WITH CHECK (public.is_admin());
 
 CREATE POLICY "Admins can update exercises"
   ON exercises FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin());
 
 CREATE POLICY "Admins can delete exercises"
   ON exercises FOR DELETE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin());
