@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import Link from 'next/link'
-import { CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, Plus, Users, Star } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -17,14 +18,22 @@ type Routine = {
 }
 
 type Profile = {
+  id: string
   name: string
   role: string
+  super_admin: boolean
+  trainer_id: string | null
 }
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [trainer, setTrainer] = useState<Profile | null>(null)
+  const [myUsers, setMyUsers] = useState<Profile[]>([])
+  const [admins, setAdmins] = useState<Profile[]>([])
   const [todayRoutine, setTodayRoutine] = useState<Routine | null>(null)
   const [upcomingRoutines, setUpcomingRoutines] = useState<Routine[]>([])
+  const [editingName, setEditingName] = useState(false)
+  const [newName, setNewName] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -37,10 +46,39 @@ export default function DashboardPage() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('name, role')
+      .select('*')
       .eq('id', user.id)
       .single()
     setProfile(profile)
+    setNewName(profile?.name || '')
+
+    // Cargar entrenador asignado
+    if (profile?.trainer_id) {
+      const { data: t } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profile.trainer_id)
+        .single()
+      setTrainer(t)
+    }
+
+    // Si es admin, cargar usuarios asignados a él
+    if (profile?.role === 'admin') {
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('trainer_id', user.id)
+      setMyUsers(users || [])
+    }
+
+    // Cargar admins disponibles (para que usuarios elijan entrenador)
+    if (profile?.role === 'user') {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'admin')
+      setAdmins(admins || [])
+    }
 
     const today = format(new Date(), 'yyyy-MM-dd')
     const { data: todayR } = await supabase
@@ -59,16 +97,48 @@ export default function DashboardPage() {
     setUpcomingRoutines(upcoming || [])
   }
 
+  const saveName = async () => {
+    if (!profile) return
+    await supabase.from('profiles').update({ name: newName }).eq('id', profile.id)
+    setEditingName(false)
+    loadData()
+  }
+
+  const selectTrainer = async (trainerId: string) => {
+    if (!profile) return
+    await supabase.from('profiles').update({ trainer_id: trainerId }).eq('id', profile.id)
+    loadData()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {profile ? `Bienvenido, ${profile.name}` : 'Dashboard'}
-          </h1>
-          <p className="text-muted-foreground">
-            {profile?.role === 'admin' ? 'Administrador' : 'Usuario'}
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <Input value={newName} onChange={e => setNewName(e.target.value)} className="w-48" />
+                <Button size="sm" onClick={saveName}>Guardar</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}>Cancelar</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{profile?.name || 'Bienvenido'}</h1>
+                {profile?.role === 'admin' && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditingName(true)}>
+                    ✎
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="text-muted-foreground">
+              {profile?.super_admin
+                ? 'Super Administrador'
+                : profile?.role === 'admin'
+                ? 'Entrenador'
+                : 'Atleta'}
+            </p>
+          </div>
         </div>
         {profile?.role === 'admin' && (
           <Link href="/dashboard/routines/new">
@@ -79,6 +149,75 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* Info del entrenador para usuarios */}
+      {profile?.role === 'user' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-500" />
+              Mi Entrenador
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {trainer ? (
+              <div className="flex items-center gap-3 p-3 bg-accent rounded-lg">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">{trainer.name || 'Entrenador'}</p>
+                  <p className="text-sm text-muted-foreground">Tu entrenador asignado</p>
+                </div>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => selectTrainer('')}>
+                  Cambiar
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground mb-3">Selecciona tu entrenador:</p>
+                {admins.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay entrenadores disponibles</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {admins.map(a => (
+                      <Button
+                        key={a.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => selectTrainer(a.id)}
+                      >
+                        {a.name || 'Entrenador'}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mis usuarios (para entrenadores) */}
+      {profile?.role === 'admin' && myUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Mis Atletas ({myUsers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {myUsers.map(u => (
+                <div key={u.id} className="px-3 py-2 bg-accent rounded-lg text-sm">
+                  {u.name || 'Sin nombre'}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

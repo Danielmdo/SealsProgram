@@ -2,6 +2,8 @@ export type Profile = {
   id: string
   name: string
   role: 'admin' | 'user'
+  super_admin: boolean
+  trainer_id: string | null
   created_at: string
 }
 

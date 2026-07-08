@@ -19,6 +19,8 @@ type Props = {
 
 export function HomeScreen({ onNavigateToRoutine, onLogout }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [trainer, setTrainer] = useState<Profile | null>(null)
+  const [admins, setAdmins] = useState<Profile[]>([])
   const [todayRoutine, setTodayRoutine] = useState<Routine | null>(null)
   const [upcomingRoutines, setUpcomingRoutines] = useState<Routine[]>([])
   const [refreshing, setRefreshing] = useState(false)
@@ -38,6 +40,25 @@ export function HomeScreen({ onNavigateToRoutine, onLogout }: Props) {
       .single()
     setProfile(profile)
 
+    // Cargar entrenador asignado
+    if (profile?.trainer_id) {
+      const { data: t } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('id', profile.trainer_id)
+        .single()
+      setTrainer(t)
+    }
+
+    // Cargar entrenadores disponibles
+    if (profile?.role === 'user' && !profile?.trainer_id) {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('role', 'admin')
+      setAdmins(admins || [])
+    }
+
     const today = format(new Date(), 'yyyy-MM-dd')
     const { data: todayR } = await supabase
       .from('routines')
@@ -55,6 +76,12 @@ export function HomeScreen({ onNavigateToRoutine, onLogout }: Props) {
     setUpcomingRoutines(upcoming || [])
   }
 
+  const selectTrainer = async (trainerId: string) => {
+    if (!profile) return
+    await supabase.from('profiles').update({ trainer_id: trainerId }).eq('id', profile.id)
+    loadData()
+  }
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await loadData()
@@ -69,7 +96,11 @@ export function HomeScreen({ onNavigateToRoutine, onLogout }: Props) {
             Hola, {profile?.name || 'Atleta'}
           </Text>
           <Text style={styles.subtitle}>
-            {profile?.role === 'admin' ? 'Administrador' : 'Atleta'}
+            {profile?.super_admin
+              ? 'Super Admin'
+              : profile?.role === 'admin'
+              ? 'Entrenador'
+              : 'Atleta'}
           </Text>
         </View>
         <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
@@ -85,6 +116,38 @@ export function HomeScreen({ onNavigateToRoutine, onLogout }: Props) {
         }
         ListHeaderComponent={() => (
           <>
+            {/* Info del entrenador */}
+            {profile?.role === 'user' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Mi Entrenador</Text>
+                {trainer ? (
+                  <View style={styles.trainerCard}>
+                    <Text style={styles.trainerName}>{trainer.name || 'Entrenador'}</Text>
+                    <Text style={styles.trainerLabel}>Tu entrenador asignado</Text>
+                  </View>
+                ) : (
+                  <View style={styles.trainerCard}>
+                    <Text style={styles.chooseLabel}>Selecciona tu entrenador:</Text>
+                    <View style={styles.trainerList}>
+                      {admins.length === 0 ? (
+                        <Text style={styles.emptyText}>No hay entrenadores disponibles</Text>
+                      ) : (
+                        admins.map(a => (
+                          <TouchableOpacity
+                            key={a.id}
+                            style={styles.trainerOption}
+                            onPress={() => selectTrainer(a.id)}
+                          >
+                            <Text style={styles.trainerOptionText}>{a.name || 'Entrenador'}</Text>
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Rutina de Hoy</Text>
               {todayRoutine ? (
@@ -172,6 +235,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fafafa',
     marginBottom: 12,
+  },
+  trainerCard: {
+    backgroundColor: '#171717',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#eab30830',
+  },
+  trainerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fafafa',
+  },
+  trainerLabel: {
+    fontSize: 13,
+    color: '#a3a3a3',
+    marginTop: 2,
+  },
+  chooseLabel: {
+    fontSize: 14,
+    color: '#a3a3a3',
+    marginBottom: 10,
+  },
+  trainerList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trainerOption: {
+    backgroundColor: '#262626',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dc262630',
+  },
+  trainerOptionText: {
+    color: '#dc2626',
+    fontWeight: '500',
+    fontSize: 14,
   },
   routineCard: {
     backgroundColor: '#171717',

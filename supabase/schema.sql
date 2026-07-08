@@ -6,6 +6,8 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  super_admin BOOLEAN NOT NULL DEFAULT false,
+  trainer_id UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -39,6 +41,7 @@ CREATE TABLE exercises (
 CREATE INDEX idx_routines_date ON routines(date);
 CREATE INDEX idx_exercises_routine_id ON exercises(routine_id);
 CREATE INDEX idx_exercises_sort_order ON exercises(routine_id, sort_order);
+CREATE INDEX idx_profiles_trainer_id ON profiles(trainer_id);
 
 -- Trigger: actualizar updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -76,24 +79,37 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
+-- === PROFILES POLICIES ===
+
+-- Todos pueden ver su propio perfil
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+-- Admins y super_admins pueden ver todos los perfiles
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
+-- Cada usuario puede actualizar su propio perfil (nombre, trainer_id)
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Admins can update any profile"
+-- Solo super_admin puede cambiar roles
+CREATE POLICY "Super admin can manage roles"
   ON profiles FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND super_admin = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND super_admin = true));
 
--- Routines policies
+-- Admins pueden ver sus usuarios asignados
+CREATE POLICY "Admins can view assigned users"
+  ON profiles FOR SELECT
+  USING (trainer_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+-- === ROUTINES POLICIES ===
+
 CREATE POLICY "Anyone can view routines"
   ON routines FOR SELECT
   USING (true);
@@ -110,7 +126,8 @@ CREATE POLICY "Admins can delete routines"
   ON routines FOR DELETE
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
--- Exercises policies
+-- === EXERCISES POLICIES ===
+
 CREATE POLICY "Anyone can view exercises"
   ON exercises FOR SELECT
   USING (true);
