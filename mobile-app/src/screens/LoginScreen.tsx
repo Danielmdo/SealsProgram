@@ -30,13 +30,24 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const handleRegister = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Ingresa tu nombre'); return }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     })
     setLoading(false)
     if (error) { Alert.alert('Error', error.message); return }
+
+    // Crear profile manualmente por si el trigger falla
+    if (data?.user?.id) {
+      const { error: profileErr } = await supabase.from('profiles').upsert({
+        id: data.user.id,
+        name: name,
+        role: 'user',
+      })
+      if (profileErr) console.log('Profile insert warning:', profileErr.message)
+    }
+
     Alert.alert('Registrado', 'Cuenta creada exitosamente. Ahora inicia sesión.')
     setMode('login')
   }

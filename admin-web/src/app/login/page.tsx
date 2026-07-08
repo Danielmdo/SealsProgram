@@ -21,12 +21,29 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       setLoading(false)
       return
     }
+
+    // Si el usuario no tiene profile, crearlo (por si el trigger falló)
+    if (data?.user?.id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .maybeSingle()
+      if (!profile) {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          name: data.user.user_metadata?.name || '',
+          role: 'user',
+        })
+      }
+    }
+
     router.push('/dashboard')
     router.refresh()
   }

@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
@@ -33,6 +33,15 @@ export default function RegisterPage() {
       setError(error.message)
       setLoading(false)
       return
+    }
+
+    // Intentar crear profile manualmente (por si el trigger falla)
+    if (data?.user?.id) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        name: name,
+        role: 'user',
+      })
     }
 
     setSuccess(true)
