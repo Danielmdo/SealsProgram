@@ -8,10 +8,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 
 export function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,13 +23,22 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-
-    if (error) {
-      Alert.alert('Error', error.message)
-      return
-    }
-
+    if (error) { Alert.alert('Error', error.message); return }
     onLogin()
+  }
+
+  const handleRegister = async () => {
+    if (!name.trim()) { Alert.alert('Error', 'Ingresa tu nombre'); return }
+    setLoading(true)
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    })
+    setLoading(false)
+    if (error) { Alert.alert('Error', error.message); return }
+    Alert.alert('Registrado', 'Cuenta creada exitosamente. Ahora inicia sesión.')
+    setMode('login')
   }
 
   return (
@@ -34,45 +46,70 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.form}>
-        <Text style={styles.logo}>SEALS PROGRAM</Text>
-        <Text style={styles.subtitle}>Inicia sesión para ver tu rutina</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="tu@email.com"
-            placeholderTextColor="#666"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="••••••••"
-            placeholderTextColor="#666"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Entrando...' : 'Entrar'}
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.form}>
+          <Text style={styles.logo}>SEALS PROGRAM</Text>
+          <Text style={styles.subtitle}>
+            {mode === 'login' ? 'Inicia sesión para ver tu rutina' : 'Crea tu cuenta'}
           </Text>
-        </TouchableOpacity>
-      </View>
+
+          {mode === 'register' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nombre</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Tu nombre"
+                placeholderTextColor="#666"
+              />
+            </View>
+          )}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="tu@email.com"
+              placeholderTextColor="#666"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Contraseña</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="••••••••"
+              placeholderTextColor="#666"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={mode === 'login' ? handleLogin : handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Procesando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+            <Text style={styles.switchText}>
+              {mode === 'login'
+                ? '¿No tienes cuenta? Regístrate'
+                : '¿Ya tienes cuenta? Inicia sesión'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
@@ -81,6 +118,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a0a',
+  },
+  scroll: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
@@ -134,5 +174,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  switchText: {
+    color: '#dc2626',
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 14,
   },
 })
