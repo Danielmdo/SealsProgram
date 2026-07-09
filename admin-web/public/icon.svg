@@ -6,10 +6,11 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <path d="M160 140c0-20 16-36 36-36h120c20 0 36 16 36 36v80l-48 28 48 28v80c0 20-16 36-36 36H196c-20 0-36-16-36-36v-80l48-28-48-28v-80z" fill="none" stroke="#fff" stroke-width="16" stroke-linejoin="round"/>
-  <path d="M256 220l-48 28v80c0 8 6 14 14 14h68c8 0 14-6 14-14v-80l-48-28z" fill="#fff" opacity="0.9"/>
-  <path d="M208 140l-48 28v80c0 8 6 14 14 14h68c8 0 14-6 14-14v-80l-48-28z" fill="#fff" opacity="0.9"/>
-  <path d="M304 140l-48 28v80c0 8 6 14 14 14h68c8 0 14-6 14-14v-80l-48-28z" fill="#fff" opacity="0.9"/>
-  <circle cx="256" cy="160" r="30" fill="#fff"/>
-  <path d="M231 170c0-14 11-25 25-25s25 11 25 25" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round"/>
+  <g transform="scale(14.2) translate(1, 1)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z"/>
+    <path d="m2.5 21.5 1.4-1.4"/>
+    <path d="m20.1 3.9 1.4-1.4"/>
+    <path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z"/>
+    <path d="m9.6 14.4 4.8-4.8"/>
+  </g>
 </svg>
