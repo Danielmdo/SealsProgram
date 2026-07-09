@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react'
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   StyleSheet,
   Modal,
-  ScrollView,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { YouTubePlayer } from '../components/YouTubePlayer'
-import type { Routine, Exercise } from '../lib/types'
+import type { Routine, RoutineSection } from '../lib/types'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -21,7 +20,7 @@ type Props = {
 
 export function RoutineDetailScreen({ routineId, onBack }: Props) {
   const [routine, setRoutine] = useState<Routine | null>(null)
-  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [sections, setSections] = useState<RoutineSection[]>([])
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,13 +35,20 @@ export function RoutineDetailScreen({ routineId, onBack }: Props) {
       .single()
     setRoutine(r)
 
-    const { data: ex } = await supabase
-      .from('exercises')
-      .select('*')
+    const { data: secs } = await supabase
+      .from('routine_sections')
+      .select('*, section_exercises(*, exercise_catalog(*))')
       .eq('routine_id', routineId)
       .order('sort_order', { ascending: true })
-    setExercises(ex || [])
+    setSections(secs || [])
   }
+
+  const sectionData = sections.map(sec => ({
+    title: sec.title,
+    valueLabel: sec.value_label,
+    value: sec.value,
+    data: sec.section_exercises || [],
+  }))
 
   return (
     <View style={styles.container}>
@@ -52,8 +58,8 @@ export function RoutineDetailScreen({ routineId, onBack }: Props) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={exercises}
+      <SectionList
+        sections={sectionData}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={() => (
@@ -68,51 +74,60 @@ export function RoutineDetailScreen({ routineId, onBack }: Props) {
               <Text style={styles.routineNotes}>{routine.notes}</Text>
             )}
             <Text style={styles.exercisesCount}>
-              {exercises.length} ejercicio{exercises.length !== 1 ? 's' : ''}
+              {sections.length} seccion{sections.length !== 1 ? 'es' : ''}
             </Text>
+          </View>
+        )}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {(section.valueLabel || section.value) && (
+              <Text style={styles.sectionValue}>
+                {section.valueLabel && <>{section.valueLabel}: </>}{section.value}
+              </Text>
+            )}
           </View>
         )}
         renderItem={({ item, index }) => (
           <View style={styles.exerciseCard}>
             <View style={styles.exerciseHeader}>
-              <Text style={styles.exerciseNumber}>{index + 1}</Text>
-              <Text style={styles.exerciseName}>{item.name}</Text>
+              <Text style={styles.exerciseName}>
+                {item.exercise_catalog?.name || 'Ejercicio'}
+              </Text>
             </View>
 
-            <View style={styles.exerciseDetails}>
-              {item.sets > 0 && (
-                <View style={styles.detailBadge}>
-                  <Text style={styles.detailText}>{item.sets} series</Text>
-                </View>
-              )}
-              {item.reps && (
-                <View style={styles.detailBadge}>
-                  <Text style={styles.detailText}>{item.reps} reps</Text>
-                </View>
-              )}
-              {item.weight && (
-                <View style={styles.detailBadge}>
-                  <Text style={styles.detailText}>{item.weight}</Text>
-                </View>
-              )}
-            </View>
-
-            {item.notes && (
-              <Text style={styles.exerciseNotes}>{item.notes}</Text>
+            {(item.valor || item.descripcion) && (
+              <View style={styles.exerciseDetails}>
+                {item.valor ? (
+                  <View style={styles.detailBadge}>
+                    <Text style={styles.detailText}>{item.valor}</Text>
+                  </View>
+                ) : null}
+                {item.descripcion ? (
+                  <View style={styles.detailBadge}>
+                    <Text style={styles.detailText}>{item.descripcion}</Text>
+                  </View>
+                ) : null}
+              </View>
             )}
 
-            {item.youtube_url && (
+            {item.exercise_catalog?.youtube_url && (
               <TouchableOpacity
                 style={styles.videoBtn}
-                onPress={() => setVideoUrl(item.youtube_url)}
+                onPress={() => setVideoUrl(item.exercise_catalog!.youtube_url!)}
               >
                 <Text style={styles.videoBtnText}>▶ Ver video</Text>
               </TouchableOpacity>
             )}
           </View>
         )}
+        renderSectionFooter={({ section }) =>
+          section.data.length === 0 ? (
+            <Text style={styles.emptyExercises}>Sin ejercicios</Text>
+          ) : null
+        }
         ListEmptyComponent={() => (
-          <Text style={styles.emptyText}>No hay ejercicios en esta rutina</Text>
+          <Text style={styles.emptyText}>No hay secciones en esta rutina</Text>
         )}
       />
 
@@ -184,27 +199,38 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: '500',
   },
+  sectionHeader: {
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: '#dc2626',
+    paddingLeft: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fafafa',
+  },
+  sectionValue: {
+    fontSize: 13,
+    color: '#a3a3a3',
+    marginTop: 2,
+  },
   exerciseCard: {
     backgroundColor: '#171717',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#262626',
   },
   exerciseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  exerciseNumber: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#dc2626',
-    fontFamily: 'monospace',
   },
   exerciseName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fafafa',
     flex: 1,
@@ -213,7 +239,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 10,
+    marginTop: 8,
   },
   detailBadge: {
     backgroundColor: '#262626',
@@ -224,12 +250,6 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 13,
     color: '#a3a3a3',
-  },
-  exerciseNotes: {
-    fontSize: 13,
-    color: '#a3a3a3',
-    marginTop: 8,
-    fontStyle: 'italic',
   },
   videoBtn: {
     marginTop: 10,
@@ -264,6 +284,13 @@ const styles = StyleSheet.create({
     color: '#fafafa',
     fontSize: 16,
     fontWeight: '600',
+  },
+  emptyExercises: {
+    color: '#666',
+    fontSize: 13,
+    fontStyle: 'italic',
+    paddingLeft: 4,
+    marginBottom: 8,
   },
   emptyText: {
     textAlign: 'center',

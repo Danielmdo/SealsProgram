@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { Dumbbell, CalendarDays, Users, LogOut, Copy } from 'lucide-react'
+import { Dumbbell, CalendarDays, Users, LogOut, Copy, Library } from 'lucide-react'
 
 const navLinks = [
   { href: '/dashboard', label: 'Inicio', icon: Dumbbell },
   { href: '/dashboard/calendar', label: 'Calendario', icon: CalendarDays },
   { href: '/dashboard/copy-routine', label: 'Copiar', icon: Copy },
+  { href: '/dashboard/exercises', label: 'Ejercicios', icon: Library },
   { href: '/dashboard/users', label: 'Usuarios', icon: Users },
 ]
 

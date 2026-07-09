@@ -66,8 +66,8 @@ export default function CopyRoutinePage() {
       return
     }
 
-    const { data: sourceExercises } = await supabase
-      .from('exercises')
+    const { data: sourceSections } = await supabase
+      .from('routine_sections')
       .select('*')
       .eq('routine_id', selectedRoutine)
       .order('sort_order', { ascending: true })
@@ -89,23 +89,33 @@ export default function CopyRoutinePage() {
       return
     }
 
-    if (sourceExercises && sourceExercises.length > 0) {
-      const exercisesToInsert = sourceExercises.map(ex => ({
-        routine_id: newRoutineId,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight,
-        youtube_url: ex.youtube_url,
-        notes: ex.notes,
-        sort_order: ex.sort_order,
-      }))
+    if (sourceSections && sourceSections.length > 0) {
+      for (const section of sourceSections) {
+        const { data: sourceExercises } = await supabase
+          .from('section_exercises')
+          .select('*')
+          .eq('section_id', section.id)
+          .order('sort_order', { ascending: true })
 
-      const { error: exError } = await supabase.from('exercises').insert(exercisesToInsert)
-      if (exError) {
-        alert('Error al copiar ejercicios: ' + exError.message)
-        setLoading(false)
-        return
+        const { data: newSection } = await supabase.from('routine_sections').insert({
+          routine_id: newRoutineId,
+          title: section.title,
+          sort_order: section.sort_order,
+          value_label: section.value_label,
+          value: section.value,
+        }).select().single()
+
+        if (newSection && sourceExercises) {
+          await supabase.from('section_exercises').insert(
+            sourceExercises.map(ex => ({
+              section_id: newSection.id,
+              exercise_catalog_id: ex.exercise_catalog_id,
+              sort_order: ex.sort_order,
+              valor: ex.valor,
+              descripcion: ex.descripcion,
+            }))
+          )
+        }
       }
     }
 
