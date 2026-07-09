@@ -13,25 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Seals Program - Admin",
+  title: "Seals Program",
   description: "Panel de administración Seals Program",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    title: "Seals",
-    statusBarStyle: "black-translucent",
-  },
-  icons: {
-    apple: "/icon-192.png",
-    icon: "/icon.svg",
-  },
-  other: {
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
-    "apple-mobile-web-app-title": "Seals",
-    "mobile-web-app-capable": "yes",
-    "theme-color": "#f97316",
-  },
 };
 
 export default function RootLayout({
@@ -44,20 +28,20 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
-        {children}
+      <body className="min-h-full bg-background text-foreground">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+        <meta name="theme-color" content="#f97316" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Seals" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <link rel="apple-touch-startup-image" href="/icon-512.png" />
+        {children}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(function(err) {
-      console.log('SW registration failed:', err)
-    })
-  })
-}
-            `,
+            __html: `navigator.serviceWorker?.register('/sw.js')`,
           }}
         />
       </body>
