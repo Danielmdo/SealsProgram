@@ -2,11 +2,12 @@
   "name": "Seals Program",
   "short_name": "Seals",
   "description": "Panel de administración Seals Program",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0c0a09",
   "theme_color": "#f97316",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "scope": "/",
   "icons": [
     {
       "src": "/icon.svg",

@@ -25,6 +25,13 @@ export const metadata: Metadata = {
     apple: "/icon-192.png",
     icon: "/icon.svg",
   },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "apple-mobile-web-app-title": "Seals",
+    "mobile-web-app-capable": "yes",
+    "theme-color": "#f97316",
+  },
 };
 
 export default function RootLayout({
@@ -37,24 +44,17 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Seals" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#f97316" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link rel="apple-touch-startup-image" href="/icon-512.png" />
-      </head>
       <body className="min-h-full">
         {children}
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/sw.js').catch(function(err) {
+      console.log('SW registration failed:', err)
+    })
   })
 }
             `,
